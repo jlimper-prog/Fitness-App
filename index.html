@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Ecuador Training">
+<meta name="theme-color" content="#ffffff">
+<title>Ecuador Training</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Outfit',sans-serif;background:#f8fafc;color:#0f172a;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+button{font-family:'Outfit',sans-serif}
+input,textarea{font-family:'Outfit',sans-serif}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script type="text/babel">
+const {useState,useEffect,useCallback,useMemo} = React;
+
+// ─── DATA ───────────────────────────────────────────────────────────────────
+const PROGRAM_START = new Date(2026, 1, 16); // Mon Feb 16, 2026
+const PHASES = [
+  { name: "Base", weeks: [1,2,3,4,5], color: "#3b82f6", ruck: "2mi / 30lb", run: "30-40min", sunday: "60-75min, 30lb" },
+  { name: "Build", weeks: [6,7,8,9,10,11,12], color: "#2563eb", ruck: "3mi / 35lb", run: "45-60min", sunday: "90-120min, 35lb" },
+  { name: "Peak", weeks: [13,14,15,16,17], color: "#1d4ed8", ruck: "4-5mi / 40lb", run: "60-90min", sunday: "2.5-3.5hrs, 40lb" },
+  { name: "Taper", weeks: [18,19], color: "#f59e0b", ruck: "2mi / 25lb", run: "30-40min", sunday: "60min light/unweighted" },
+];
+const DELOAD_WEEKS = [4, 8, 12, 16];
+const CYCLE_PATTERN = {
+  1: { sat: "CrossFit 35-50min", intensity: "Moderate" },
+  2: { sat: "Long Ruck", intensity: "High" },
+  3: { sat: "Metcon 35-50min", intensity: "Mod-High" },
+  4: { sat: "Ruck (↓30%)", intensity: "DELOAD" },
+};
+const HYROX_OPTIONS = [
+  { id: "A", name: "Push/Pull Engine", desc: "4-5 rounds: DB Rows, Wall Balls, Sandbag Lunges, Farmer Carries, Row 300-500m. Rest 90-120s." },
+  { id: "B", name: "EMOM Grind", desc: "24min EMOM (6×4min): Wall Balls, Sandbag Lunges, DB Rows, Burpees." },
+  { id: "C", name: "Step Pattern", desc: "3-4 rounds: Row 500-600m, Box Step-Overs, DB Rows, Wall Balls. Rest 2-3min." },
+  { id: "D", name: "Aerobic Control", desc: "30-40min continuous: Row, Farmer Carry, Wall Balls, Sandbag Front Carry. RPE 6 max." },
+  { id: "E", name: "Murph-Style", desc: "5 rounds: Ring Rows, Push-ups, Sandbag Lunges, Row 400m. Rest 90-120s." },
+];
+
+const SUBS = {
+  ruck: [
+    { id: "box-stepups", title: "Box Step-Ups w/ Pack", icon: "📦", duration: "Match ruck duration", detail: "Continuous step-ups on 16-20\" box wearing your pack. Alternate legs, RPE 5-6. BETTER than flat rucking for summit prep.", rpe: "5-6", tag: "Best" },
+    { id: "stair-climb", title: "Stair Climbing w/ Vest", icon: "🪜", duration: "Match ruck duration", detail: "StairMaster or building stairs with weight vest. Steady pace, conversational.", rpe: "5-6", tag: "Good" },
+    { id: "incline-tread", title: "Incline Treadmill + Weight", icon: "📐", duration: "Match ruck duration", detail: "Treadmill at 10-15% incline with pack or vest. Conversational pace.", rpe: "5-6", tag: "Good" },
+    { id: "row-ruck", title: "Rowing (Steady State)", icon: "🚣", duration: "Match ruck duration", detail: "RPE 5-6. Split: 2:10-2:20/500m. Stroke rate: 18-22 spm. Use sparingly—1-2x/month max.", rpe: "5-6", tag: "Sparingly" },
+  ],
+  run_z2: [
+    { id: "row-z2", title: "Rowing (Steady State)", icon: "🚣", duration: "Match run duration", detail: "RPE 5-6. Split: 2:10-2:20/500m. Stroke rate: 18-22 spm.", rpe: "5-6", tag: "Sparingly" },
+    { id: "bike-z2", title: "Bike (Zone 2)", icon: "🚴", duration: "Match run duration", detail: "Easy spinning at conversational pace. RPE 5-6. Good low-impact option.", rpe: "5-6", tag: "Low Impact" },
+  ],
+  run_vo2: [
+    { id: "row-vo2", title: "Rowing Intervals", icon: "🚣", duration: "Same structure", detail: "15min warm-up. 6-8× 3min at RPE 8-9 (~1:45-1:55/500m, 26-30 spm), 3min easy recovery. 10min cool-down.", rpe: "8-9", tag: "Sparingly" },
+    { id: "bike-vo2", title: "Bike Intervals", icon: "🚴", duration: "Same structure", detail: "15min warm-up. 6-8× 3min hard at RPE 8-9, 3min easy spin recovery. 10min cool-down.", rpe: "8-9", tag: "Low Impact" },
+  ],
+  walk: [{ id: "row-ez", title: "Easy Rowing", icon: "🚣", duration: "20-30min", detail: "RPE 4-5. Split: 2:20-2:30/500m. HR under 130 bpm.", rpe: "4-5", tag: "Fatigued" }],
+  yoga: [
+    { id: "stretch", title: "Extended Stretching", icon: "🧘", duration: "30-45min", detail: "Full body: Hip flexors, hamstrings, quads, shoulders 2min/side each. Deep breathing.", rpe: "Recovery", tag: "Home" },
+    { id: "foam", title: "Foam Roll + Mobility", icon: "🧘", duration: "30-45min", detail: "Foam rolling (IT band, quads, calves, upper back) + hip mobility circuit.", rpe: "Recovery", tag: "Home" },
+  ],
+  crossfit: [
+    { id: "home-met", title: "Home Metcon", icon: "🔥", duration: "35-50min", detail: "4-5 rounds: 15 burpees, 20 air squats, 15 push-ups, 200m run. Rest 90s.", rpe: "7-8", tag: "No Gym" },
+    { id: "hiit", title: "HIIT Run", icon: "🏃", duration: "35-45min", detail: "10min warm-up. 8-10× 1min sprint/1min walk. 4× 2min hard/2min easy. Cool-down.", rpe: "7-8", tag: "Outdoor" },
+  ],
+  legs: [{ id: "bw-legs", title: "Bodyweight Legs", icon: "🦵", duration: "45-60min", detail: "4 rounds: Pistol squats 8/side, walking lunges 20, jump squats 15, wall sit 60s, single-leg RDL 10/side.", rpe: "7-8", tag: "No Gym" }],
+  back: [{ id: "bw-back", title: "Bodyweight Pull", icon: "🏋️", duration: "45-60min", detail: "4 rounds: Pull-ups max, inverted rows 12, Superman 30s, band pull-aparts 20, dead hangs 45s.", rpe: "7-8", tag: "Minimal" }],
+  upper: [{ id: "bw-upper", title: "Bodyweight Push", icon: "💪", duration: "45-60min", detail: "4 rounds: Push-ups 20, pike push-ups 10, dips 12, diamond push-ups 10, plank 60s.", rpe: "6-7", tag: "No Gym" }],
+  hyrox: [{ id: "bw-circuit", title: "Bodyweight Circuit", icon: "💪", duration: "35-45min", detail: "5 rounds: 10 burpees, 20 lunges, 15 push-ups, 20 air squats, 30s plank. Then 10-15min tempo run.", rpe: "6-7", tag: "No Gym" }],
+};
+
+function getSubsFor(session) {
+  const t = (session.title || "").toLowerCase();
+  if (t.includes("weighted ruck") || t.includes("long ruck")) return SUBS.ruck;
+  if (t.includes("ruck") && !t.includes("recovery") && !t.includes("walk")) return SUBS.ruck;
+  if (t.includes("zone 2")) return SUBS.run_z2;
+  if (t.includes("vo2max")) return SUBS.run_vo2;
+  if (t.includes("recovery walk")) return SUBS.walk;
+  if (t.includes("yoga") || t.includes("pilates")) return SUBS.yoga;
+  if (t.includes("crossfit") || t.includes("metcon")) return SUBS.crossfit;
+  if (t.includes("hip symmetry + legs")) return SUBS.legs;
+  if (t.includes("crossover symmetry + back")) return SUBS.back;
+  if (t.includes("crossover symmetry + upper")) return SUBS.upper;
+  if (t.includes("hyrox")) return SUBS.hyrox;
+  return null;
+}
+
+const WEEK_DATA = [];
+for (let w = 1; w <= 19; w++) {
+  const startDate = new Date(PROGRAM_START);
+  startDate.setDate(startDate.getDate() + (w - 1) * 7);
+  WEEK_DATA.push({ week: w, cycle: ((w - 1) % 4) + 1, phase: PHASES.find(p => p.weeks.includes(w)), isDeload: DELOAD_WEEKS.includes(w), startDate });
+}
+
+const gp = (w) => PHASES.find(p => p.weeks.includes(w));
+const gc = (w) => ((w - 1) % 4) + 1;
+const gwn = (date) => { const d = new Date(date.getFullYear(), date.getMonth(), date.getDate()); const s = new Date(PROGRAM_START.getFullYear(), PROGRAM_START.getMonth(), PROGRAM_START.getDate()); const diff = Math.floor((d - s) / 864e5); return diff < 0 ? 0 : Math.floor(diff / 7) + 1; };
+const fd = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+const fdf = (d) => d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+
+function getWorkout(wk, dow) {
+  if (wk < 1 || wk > 19) return null;
+  const p = gp(wk), c = gc(wk), ci = CYCLE_PATTERN[c], dl = DELOAD_WEEKS.includes(wk);
+  const dlNote = dl ? "\n⚡ DELOAD: Reduce all sets/volume by ~30%." : "";
+
+  const W = {
+    0: { day: "Sunday",
+      am: { title: "Yoga", duration: "30-45min", rpe: "Recovery", icon: "🧘",
+        detail: [
+          { move: "Hamstring stretches", info: "2 min per side" },
+          { move: "Spinal twists", info: "2 min per side" },
+          { move: "Cat-Cow flow", info: "2–3 min continuous" },
+          { move: "Forward folds", info: "2–3 min" },
+          { move: "Breath work", info: "5–10 min, nasal breathing" },
+          { note: "Full body flow. Keep it gentle and restorative." },
+        ]},
+      pm: { title: "Weighted Ruck", duration: p.sunday, rpe: "5-6", icon: "🏔️",
+        detail: [
+          { move: "Weighted ruck", info: p.sunday },
+          { move: "Pace", info: "Conversational (RPE 5-6)" },
+          { move: "Terrain", info: "Varied — hills preferred" },
+          { note: `Summit-day simulation. Practice pack fit and gear.${wk >= 9 && wk <= 12 ? " Optional: 1 unweighted Sunday/month." : ""}${wk >= 13 && wk <= 17 ? " NON-NEGOTIABLE: Always 40lb." : ""}${dlNote}` },
+        ]},
+      deload: dl },
+
+    1: { day: "Monday",
+      am: { title: "Ruck", duration: p.ruck, rpe: "5-6", icon: "🎒",
+        detail: [
+          { move: "Ruck walk", info: p.ruck },
+          { move: "Pace", info: "Conversational (RPE 5-6)" },
+          { note: `Steady effort, flat or gentle terrain.${dlNote}` },
+        ]},
+      pm: { title: "Hip Symmetry + Legs", duration: "60-75min", rpe: "7-8", icon: "🦵",
+        detail: [
+          { section: "Warm-Up" },
+          { move: "Hip Symmetry activation", info: "10–12 min" },
+          { section: "Strength" },
+          { move: "Back Squat", info: "4 × 3-5 reps", rest: "2–3 min", note: "RPE 7-8. Heavy but controlled.", tracked: true },
+          { move: "Step-Ups (weighted)", info: "3 × 6-10 per side", rest: "90 sec", tracked: true },
+          { move: "Hip Thrust", info: "3 × 8-12 reps", rest: "90 sec", tracked: true },
+          { move: "Bulgarian Split Squat", info: "3 × 10-15 per side", rest: "60 sec", note: "RPE 7-8. DB or barbell.", tracked: true },
+          { section: "Carry" },
+          { move: "Suitcase Carries", info: "3 × 30-45 sec per side", rest: "60 sec", note: "Heavy. Engage core, stay upright.", tracked: true },
+          { note: dlNote },
+        ]},
+      deload: dl },
+
+    2: { day: "Tuesday",
+      am: { title: "Recovery Walk", duration: "1-3mi", rpe: "3-4", icon: "🚶",
+        detail: [
+          { move: "Easy walk", info: "1–3 miles" },
+          { move: "Pace", info: "Very easy (RPE 3-4)" },
+          { note: "Active recovery only. No pack." },
+        ]},
+      pm: { title: "Hip Symmetry + Hyrox + Tempo", duration: "55-75min", rpe: "6-8", icon: "💪",
+        detail: [
+          { section: "Warm-Up" },
+          { move: "Hip Symmetry activation", info: "10–12 min" },
+          { section: "Hyrox Workout" },
+          { move: "Hyrox rotation", info: "35–45 min at RPE 6-7", note: "See Hyrox option below for today's workout." },
+          { section: "Tempo Finish" },
+          { move: "Tempo run", info: "10–15 min at RPE 7-8", note: "~85% max HR. Strong, controlled effort." },
+          { note: dlNote },
+        ]},
+      deload: dl, hyrox: HYROX_OPTIONS[(wk - 1) % 5] },
+
+    3: { day: "Wednesday",
+      am: { title: "Ruck", duration: p.ruck, rpe: "5-6", icon: "🎒",
+        detail: [
+          { move: "Ruck walk", info: p.ruck },
+          { move: "Pace", info: "Conversational (RPE 5-6)" },
+          { note: dlNote },
+        ]},
+      pm: (c === 1 || c === 3) ?
+        { title: "Zone 2 + Hill Repeats", duration: p.run, rpe: "5-9", icon: "🏃‍♂️",
+          detail: [
+            { section: "Zone 2 Base" },
+            { move: "Easy run", info: p.run + " total", note: "Conversational pace. Include nasal breathing segments." },
+            { section: "Hill Repeats" },
+            { move: "Hill sprints", info: "4-6 × 2-3 min hard uphill", rest: "Jog down (2-3 min)", note: "RPE 8-9 on the climbs. Full recovery on descent." },
+            { section: "Accessory" },
+            { move: "DB Calf Raises", info: "2-3 × 12-20 reps", rest: "60 sec", note: "Slow eccentric, pause at top.", tracked: true },
+            { note: dlNote },
+          ]} :
+        { title: "VO2max Intervals", duration: p.run, rpe: "5-9", icon: "⚡",
+          detail: [
+            { section: "Warm-Up" },
+            { move: "Easy jog", info: "15 min" },
+            { section: "Intervals" },
+            { move: "Hard effort", info: `${wk <= 3 ? "4" : dl ? "4" : "6-8"} × 3 min at RPE 8-9`, rest: "3 min easy jog", note: "90-95% max HR. Push hard, recover fully." },
+            { section: "Cool-Down" },
+            { move: "Easy jog", info: "10 min" },
+            { section: "Accessory" },
+            { move: "DB Calf Raises", info: "2-3 × 12-20 reps", rest: "60 sec", tracked: true },
+            { note: dlNote },
+          ]},
+      deload: dl },
+
+    4: { day: "Thursday",
+      am: { title: "Yoga / Pilates", duration: "45-60min", rpe: "Recovery", icon: "🧘",
+        detail: [
+          { move: "Hamstring stretches", info: "5 min" },
+          { move: "Spinal mobility flow", info: "10 min" },
+          { move: "Core stability work", info: "10–15 min" },
+          { move: "Breath work", info: "10 min, nasal breathing" },
+          { note: "LIGHTEST training day of the week. Prioritize recovery." },
+        ]},
+      pm: { title: "Crossover Symmetry + Back", duration: "50-65min", rpe: "7-9", icon: "🏋️",
+        detail: [
+          { section: "Warm-Up" },
+          { move: "Crossover Symmetry activation", info: "10–12 min" },
+          { section: "Pull Strength" },
+          { move: "Weighted Pull-Ups", info: "4-5 × 3-5 reps", rest: "2–3 min", note: "RPE 8-9. OR Max Chin-Ups 3-4 sets.", tracked: true },
+          { move: "DB Rows", info: "3-4 × 8-12 per arm", rest: "90 sec", note: "RPE 7-8. Controlled, full ROM.", tracked: true },
+          { section: "Posterior Chain" },
+          { move: "RDL", info: "3 × 4-6 reps", rest: "2 min", note: "RPE 7-8. Heavy, hinge focus.", tracked: true },
+          { move: "KB Swings", info: "3 × 15-20 reps", rest: "60 sec", tracked: true },
+          { section: "Grip & Carry" },
+          { move: "Dead Hangs", info: "3 × 30-45 sec", rest: "60 sec" },
+          { move: "Suitcase Carries (light)", info: "2 × 45 sec per side", rest: "60 sec", tracked: true },
+          { note: dlNote },
+        ]},
+      deload: dl },
+
+    5: { day: "Friday",
+      am: { title: "Recovery Walk/Light Ruck", duration: "Light", rpe: "3-4", icon: "🚶",
+        detail: [
+          { move: "Easy walk or light ruck", info: "20–40 min" },
+          { note: "Recovery day. Very easy effort." },
+        ]},
+      pm: { title: "Crossover Symmetry + Upper", duration: "60-75min", rpe: "6-8", icon: "💪",
+        detail: [
+          { section: "Warm-Up" },
+          { move: "Crossover Symmetry activation", info: "10–12 min" },
+          { section: "Push" },
+          { move: "DB Bench Press", info: "3-4 × 8-12 reps", rest: "90 sec", note: "RPE 7-8.", tracked: true },
+          { move: "Dips", info: "3 × 8-15 reps", rest: "90 sec", note: "OR Incline DB Press 3 × 8-12.", tracked: true },
+          { move: "Push-Ups", info: "3 × 15-25 reps", rest: "60 sec" },
+          { section: "Shoulders & Core" },
+          { move: "Y-Raises", info: "3 × 12-15 reps (light)", rest: "60 sec", tracked: true },
+          { move: "Toes-to-Bar", info: "3 × 8-12 reps", rest: "60 sec" },
+          { move: "Side Plank", info: "3 × 30-45 sec per side" },
+          { move: "Weighted Planks", info: "3 × 45-60 sec" },
+          { section: "Carry" },
+          { move: "Farmer Carries", info: "3 × 60 sec (heavy)", rest: "60 sec", tracked: true },
+          { note: dlNote },
+        ]},
+      deload: dl },
+
+    6: { day: "Saturday",
+      am: (c === 1 || c === 3) ?
+        { title: ci.sat, duration: "35-50min", rpe: "7-8", icon: "🔥",
+          detail: [
+            { move: c === 1 ? "CrossFit WOD" : "Metcon", info: "35–50 min total" },
+            { move: "Work intervals", info: "2-4 min efforts at RPE 7-8" },
+            { note: `Mix of burpees, thrusters, box jumps, and running. High intensity, short rest.${dl ? " DELOAD: Reduce volume 30%." : ""}` },
+          ]} :
+        { title: "Long Ruck", duration: c === 2 ? (wk <= 5 ? "75-90min, 30lb" : wk <= 12 ? "2hrs, 35lb" : wk <= 17 ? "2.5-3hrs, 40lb" : "60min light") : (wk <= 5 ? "75-90min, 30lb" : wk <= 12 ? "2hrs, 35lb" : wk <= 17 ? "2.5-3hrs, 40lb" : "60min light"), rpe: "6-7", icon: "🎒",
+          detail: [
+            { move: "Long ruck", info: c === 2 ? (wk <= 5 ? "75-90 min at 30lb" : wk <= 12 ? "2 hrs at 35lb" : wk <= 17 ? "2.5-3.5 hrs at 40lb" : "60 min light") : (wk <= 5 ? "75-90 min at 30lb" : wk <= 12 ? "2 hrs at 35lb" : wk <= 17 ? "2.5-3.5 hrs at 40lb" : "60 min light") },
+            { move: "Pace", info: "Conversational (RPE 6-7)" },
+            { note: `Endurance focus. Varied terrain preferred.${dl ? " DELOAD: Reduce duration 30%." : ""}` },
+          ]},
+      pm: null, deload: dl },
+  };
+  return W[dow] || null;
+}
+
+// ─── THEME ──────────────────────────────────────────────────────────────────
+const T = {
+  bg: "#ffffff", surface: "#f8fafc", card: "#ffffff", border: "#e2e8f0", borderLight: "#f1f5f9",
+  text: "#0f172a", textSecondary: "#475569", textTertiary: "#94a3b8", textInverse: "#ffffff",
+  blue: "#2563eb", blueLight: "#3b82f6", bluePale: "#eff6ff", blueBorder: "#bfdbfe", blueDark: "#1e40af",
+  accent: "#2563eb", accentLight: "#dbeafe", accentPale: "#eff6ff",
+  success: "#059669", successPale: "#ecfdf5", successBorder: "#a7f3d0",
+  warn: "#d97706", warnPale: "#fffbeb", warnBorder: "#fde68a",
+  swap: "#7c3aed", swapPale: "#f5f3ff", swapBorder: "#c4b5fd",
+  shadow: "0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04)",
+  shadowMd: "0 4px 12px rgba(15,23,42,0.08), 0 2px 4px rgba(15,23,42,0.04)",
+  shadowLg: "0 12px 40px rgba(15,23,42,0.12)",
+  radius: 14, radiusSm: 10, radiusXs: 8,
+};
+
+const font = "'Outfit', sans-serif";
+const mono = "'JetBrains Mono', monospace";
+
+// ─── APP ────────────────────────────────────────────────────────────────────
+function App() {
+  const [view, setView] = useState("today");
+  const [selWeek, setSelWeek] = useState(null);
+  const [comp, setComp] = useState({});
+  const [swaps, setSwaps] = useState({});
+  const [weights, setWeights] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(null);
+  const [swapModal, setSwapModal] = useState(null);
+
+  const today = new Date(), cw = gwn(today), cd = today.getDay();
+
+  useEffect(() => {
+    (async () => {
+      try { const r = ({value: localStorage.getItem("ec-data")}); if (r?.value) { const d = JSON.parse(r.value); setComp(d.comp || {}); setSwaps(d.swaps || {}); setWeights(d.weights || {}); } } catch(e) {}
+      setLoading(false);
+    })();
+  }, []);
+
+  const save = useCallback(async (nc, ns, nw) => {
+    try { localStorage.setItem("ec-data", JSON.stringify({ comp: nc, swaps: ns, weights: nw || weights })); } catch(e) {}
+  }, [weights]);
+
+  const toggle = useCallback((k) => {
+    const nc = { ...comp }; nc[k] ? delete nc[k] : nc[k] = Date.now(); setComp(nc); save(nc, swaps, weights);
+  }, [comp, swaps, save]);
+
+  const doSwap = useCallback((wk, d, s, subId) => {
+    const ns = { ...swaps, [`w${wk}-d${d}-${s}`]: subId }; setSwaps(ns); save(comp, ns, weights); setSwapModal(null);
+  }, [swaps, comp, save]);
+
+  const doCustomSwap = useCallback((wk, d, s, title, detail) => {
+    const ns = { ...swaps, [`w${wk}-d${d}-${s}`]: { custom: true, title, detail } }; setSwaps(ns); save(comp, ns, weights); setSwapModal(null);
+  }, [swaps, comp, save]);
+
+  const revert = useCallback((wk, d, s) => {
+    const ns = { ...swaps }; delete ns[`w${wk}-d${d}-${s}`]; setSwaps(ns); save(comp, ns, weights);
+  }, [swaps, comp, save, weights]);
+
+  const saveWeight = useCallback((moveName, lb, effort) => {
+    const nw = { ...weights, [moveName]: { lb, effort, date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }) } };
+    setWeights(nw); save(comp, swaps, nw);
+  }, [weights, comp, swaps, save]);
+
+  const ck = (wk, d, s) => `w${wk}-d${d}-${s}`;
+  const ic = (wk, d, s) => !!comp[ck(wk, d, s)];
+  const gs = (wk, d, s) => swaps[`w${wk}-d${d}-${s}`] || null;
+
+  const resolve = useCallback((orig, wk, d, sk) => {
+    const sv = gs(wk, d, sk);
+    if (!sv) return { ...orig, swapped: false };
+    if (sv?.custom) return { title: sv.title, duration: orig.duration, detail: sv.detail || "Custom substitution", rpe: orig.rpe, icon: "🔄", swapped: true };
+    const subs = getSubsFor(orig);
+    const sub = subs?.find(x => x.id === sv);
+    if (sub) return { title: sub.title, duration: sub.duration.startsWith("Match") || sub.duration === "Same structure" ? orig.duration : sub.duration, detail: sub.detail, rpe: sub.rpe, icon: sub.icon, swapped: true, tag: sub.tag };
+    return { ...orig, swapped: false };
+  }, [swaps]);
+
+  const stats = useMemo(() => ({ total: Object.keys(comp).length, week: Object.keys(comp).filter(k => k.startsWith(`w${cw}-`)).length, phase: cw >= 1 && cw <= 19 ? gp(cw) : null, left: Math.max(0, 19 - cw) }), [comp, cw]);
+
+  const wp = useMemo(() => {
+    const r = {};
+    for (let w = 1; w <= 19; w++) { let t = 0, d = 0; for (let i = 0; i <= 6; i++) { const wo = getWorkout(w, i); if (wo) { if (wo.am) { t++; if (ic(w, i, "am")) d++; } if (wo.pm) { t++; if (ic(w, i, "pm")) d++; } } } r[w] = { t, d, pct: t > 0 ? Math.round(d / t * 100) : 0 }; }
+    return r;
+  }, [comp]);
+
+  if (loading) return (
+    <div style={{ background: T.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: font }}>
+      <div style={{ textAlign: "center", color: T.textSecondary }}>
+        <div style={{ width: 48, height: 48, border: `3px solid ${T.border}`, borderTopColor: T.blue, borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+        Loading...
+      </div>
+    </div>
+  );
+
+  const pc = stats.phase ? T.blue : T.blue;
+
+  return (
+    <div style={{ background: T.surface, minHeight: "100vh", color: T.text, fontFamily: font, maxWidth: 480, margin: "0 auto", position: "relative" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+      <style>{`* { -webkit-tap-highlight-color: transparent; } @keyframes fadeUp { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } } @keyframes slideUp { from { transform:translateY(100%) } to { transform:translateY(0) } }`}</style>
+
+      {/* ── Header ── */}
+      <div style={{ background: T.bg, padding: "24px 20px 20px", borderBottom: `1px solid ${T.border}` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 11, fontFamily: mono, color: T.textTertiary, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 6, fontWeight: 500 }}>Ecuador Expedition</div>
+            <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.5, color: T.text }}>
+              {cw >= 1 && cw <= 19 ? <>Week {cw} <span style={{ color: T.blue, fontWeight: 600 }}>· {stats.phase?.name}</span></> : cw < 1 ? "Starting Soon" : "Complete 🎉"}
+            </div>
+          </div>
+          <div style={{ background: T.bluePale, borderRadius: 12, padding: "8px 12px", textAlign: "center" }}>
+            <div style={{ fontSize: 20 }}>🏔️</div>
+            <div style={{ fontSize: 9, fontFamily: mono, color: T.blue, fontWeight: 500, marginTop: 2 }}>{stats.left}w</div>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display: "flex", gap: 8 }}>
+          {[
+            { label: "This Week", val: stats.week, color: T.blue },
+            { label: "Total Done", val: stats.total, color: T.blue },
+            { label: "VO2max Goal", val: "50+", color: T.warn },
+          ].map((s, i) => (
+            <div key={i} style={{ flex: 1, background: T.surface, borderRadius: T.radiusXs, padding: "10px 12px", border: `1px solid ${T.borderLight}` }}>
+              <div style={{ fontSize: 9, fontFamily: mono, color: T.textTertiary, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4, fontWeight: 500 }}>{s.label}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: s.color, letterSpacing: -0.5 }}>{s.val}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Nav ── */}
+      <div style={{ display: "flex", padding: "12px 20px", gap: 6, background: T.bg, borderBottom: `1px solid ${T.border}` }}>
+        {[{ id: "today", l: "Today" }, { id: "week", l: "This Week" }, { id: "calendar", l: "19 Weeks" }].map(t => (
+          <button key={t.id} onClick={() => { setView(t.id); if (t.id === "week") setSelWeek(null); }}
+            style={{ flex: 1, padding: "10px 6px", border: view === t.id ? "none" : `1px solid ${T.border}`, borderRadius: T.radiusXs, cursor: "pointer", fontFamily: font, fontSize: 13, fontWeight: 600, background: view === t.id ? T.blue : T.bg, color: view === t.id ? T.textInverse : T.textSecondary, transition: "all 0.2s", boxShadow: view === t.id ? "0 2px 8px rgba(37,99,235,0.25)" : "none" }}>
+            {t.l}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Content ── */}
+      <div style={{ padding: "16px 20px 100px" }}>
+        {view === "today" && <TodayView cw={cw} cd={cd} today={today} ic={ic} toggle={toggle} ck={ck} resolve={resolve} expanded={expanded} setExpanded={setExpanded} onSwap={(s, o) => setSwapModal({ wk: cw, d: cd, s, orig: o })} onRevert={(s) => revert(cw, cd, s)} gs={(s) => gs(cw, cd, s)} weights={weights} saveWeight={saveWeight} />}
+        {view === "week" && <WeekView wk={selWeek || cw} ic={ic} toggle={toggle} ck={ck} resolve={resolve} setSelWeek={setSelWeek} wp={wp} onSwap={(wk, d, s, o) => setSwapModal({ wk, d, s, orig: o })} onRevert={revert} gs={gs} weights={weights} saveWeight={saveWeight} />}
+        {view === "calendar" && <CalView cw={cw} wp={wp} onSel={(w) => { setSelWeek(w); setView("week"); }} />}
+      </div>
+
+      {swapModal && <SwapModal orig={swapModal.orig} wk={swapModal.wk} d={swapModal.d} s={swapModal.s} onApply={doSwap} onCustom={doCustomSwap} onClose={() => setSwapModal(null)} />}
+    </div>
+  );
+}
+
+// ─── SWAP MODAL ─────────────────────────────────────────────────────────────
+function SwapModal({ orig, wk, d, s, onApply, onCustom, onClose }) {
+  const [custom, setCustom] = useState(false);
+  const [ct, setCt] = useState("");
+  const [cd, setCd] = useState("");
+  const subs = getSubsFor(orig);
+  const tagColor = (tag) => tag === "Best" ? { bg: T.successPale, c: T.success, border: T.successBorder } : tag === "Sparingly" ? { bg: T.warnPale, c: T.warn, border: T.warnBorder } : { bg: T.bluePale, c: T.blue, border: T.blueBorder };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={onClose}>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(15,23,42,0.4)", backdropFilter: "blur(8px)" }} />
+      <div style={{ position: "relative", width: "100%", maxWidth: 480, maxHeight: "85vh", overflow: "auto", background: T.bg, borderRadius: "24px 24px 0 0", padding: "16px 20px 40px", boxShadow: T.shadowLg, animation: "slideUp 0.3s ease-out" }} onClick={e => e.stopPropagation()}>
+        <div style={{ width: 36, height: 4, background: T.border, borderRadius: 2, margin: "0 auto 20px" }} />
+        <div style={{ fontSize: 10, fontFamily: mono, color: T.swap, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6, fontWeight: 500 }}>Swap Session</div>
+        <div style={{ fontSize: 18, fontWeight: 600, color: T.text, marginBottom: 2 }}>{orig.icon} {orig.title}</div>
+        <div style={{ fontSize: 13, color: T.textTertiary, marginBottom: 20 }}>{orig.duration} · RPE {orig.rpe}</div>
+
+        {subs?.length > 0 && subs.map(sub => {
+          const tc = tagColor(sub.tag);
+          return (
+            <button key={sub.id} onClick={() => onApply(wk, d, s, sub.id)} style={{ display: "block", width: "100%", textAlign: "left", padding: "16px", marginBottom: 8, background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.radius, cursor: "pointer", fontFamily: font, color: T.text, boxShadow: T.shadow, transition: "all 0.15s" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 20 }}>{sub.icon}</span>
+                  <span style={{ fontSize: 15, fontWeight: 600 }}>{sub.title}</span>
+                </div>
+                <span style={{ fontSize: 10, fontFamily: mono, fontWeight: 500, padding: "3px 10px", borderRadius: 6, background: tc.bg, color: tc.c, border: `1px solid ${tc.border}` }}>{sub.tag}</span>
+              </div>
+              <div style={{ fontSize: 13, color: T.textSecondary, lineHeight: 1.5 }}>{sub.detail}</div>
+            </button>
+          );
+        })}
+
+        <div style={{ marginTop: 8 }}>
+          {!custom ? (
+            <button onClick={() => setCustom(true)} style={{ width: "100%", padding: 14, background: T.surface, border: `2px dashed ${T.border}`, borderRadius: T.radius, cursor: "pointer", color: T.textSecondary, fontFamily: font, fontSize: 13, fontWeight: 500 }}>
+              ✏️ Custom substitution...
+            </button>
+          ) : (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: 16 }}>
+              <div style={{ fontSize: 10, fontFamily: mono, color: T.swap, letterSpacing: 2, textTransform: "uppercase", marginBottom: 10, fontWeight: 500 }}>Custom</div>
+              <input placeholder="Exercise name" value={ct} onChange={e => setCt(e.target.value)} style={{ width: "100%", padding: "10px 14px", background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.radiusXs, color: T.text, fontFamily: font, fontSize: 14, marginBottom: 8, outline: "none", boxSizing: "border-box" }} />
+              <textarea placeholder="Details (optional)" value={cd} onChange={e => setCd(e.target.value)} rows={2} style={{ width: "100%", padding: "10px 14px", background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.radiusXs, color: T.text, fontFamily: font, fontSize: 13, marginBottom: 10, outline: "none", resize: "vertical", boxSizing: "border-box" }} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setCustom(false)} style={{ flex: 1, padding: 10, background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.radiusXs, color: T.textSecondary, cursor: "pointer", fontFamily: font, fontSize: 13 }}>Cancel</button>
+                <button onClick={() => ct.trim() && onCustom(wk, d, s, ct.trim(), cd.trim())} disabled={!ct.trim()} style={{ flex: 2, padding: 10, background: ct.trim() ? T.swap : T.border, border: "none", borderRadius: T.radiusXs, color: T.textInverse, cursor: ct.trim() ? "pointer" : "default", fontFamily: font, fontSize: 13, fontWeight: 600, opacity: ct.trim() ? 1 : 0.5 }}>Apply</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <button onClick={onClose} style={{ width: "100%", padding: 14, background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, cursor: "pointer", color: T.textSecondary, fontFamily: font, fontSize: 14, fontWeight: 500, marginTop: 12 }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── TODAY VIEW ─────────────────────────────────────────────────────────────
+function TodayView({ cw, cd, today, ic, toggle, ck, resolve, expanded, setExpanded, onSwap, onRevert, gs, weights, saveWeight }) {
+  const wo = cw >= 1 && cw <= 19 ? getWorkout(cw, cd) : null;
+  if (!wo) return (
+    <div style={{ textAlign: "center", padding: "60px 20px" }}>
+      <div style={{ fontSize: 56, marginBottom: 16 }}>🏔️</div>
+      <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>{cw < 1 ? "Training starts Feb 16!" : "Program complete!"}</div>
+      <div style={{ fontSize: 14, color: T.textSecondary }}>{cw < 1 ? "Rest up and prepare your gear." : "Ready for Cotopaxi & Chimborazo."}</div>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 13, color: T.textTertiary, marginBottom: 4 }}>{fdf(today)}</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: T.text }}>{wo.day}</div>
+        {wo.deload && <div style={{ marginTop: 10, background: T.warnPale, border: `1px solid ${T.warnBorder}`, borderRadius: T.radiusSm, padding: "10px 14px", fontSize: 13, color: T.warn, fontWeight: 600 }}>⚡ DELOAD — Reduce all volume 30%</div>}
+      </div>
+
+      {["am", "pm"].map(slot => {
+        const orig = wo[slot]; if (!orig) return null;
+        const res = resolve(orig, cw, cd, slot);
+        const sw = !!gs(slot);
+        return <SCard key={slot} session={res} label={slot.toUpperCase()} swapped={sw} done={ic(cw, cd, slot)} onToggle={() => toggle(ck(cw, cd, slot))} expanded={expanded === slot} onExpand={() => setExpanded(expanded === slot ? null : slot)} onSwap={() => onSwap(slot, orig)} onRevert={sw ? () => onRevert(slot) : null} origTitle={sw ? orig.title : null} weights={weights} saveWeight={saveWeight} />;
+      })}
+
+      {wo.hyrox && !gs("pm") && (
+        <div style={{ marginTop: 12, background: T.bluePale, border: `1px solid ${T.blueBorder}`, borderRadius: T.radius, padding: 16, animation: "fadeUp 0.3s ease-out" }}>
+          <div style={{ fontSize: 10, fontFamily: mono, color: T.blue, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6, fontWeight: 500 }}>Hyrox Option {wo.hyrox.id}</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: T.text, marginBottom: 4 }}>{wo.hyrox.name}</div>
+          <div style={{ fontSize: 13, color: T.textSecondary, lineHeight: 1.6 }}>{wo.hyrox.desc}</div>
+        </div>
+      )}
+
+      {/* RPE */}
+      <div style={{ marginTop: 20, background: T.bg, borderRadius: T.radius, padding: 16, border: `1px solid ${T.border}`, boxShadow: T.shadow }}>
+        <div style={{ fontSize: 10, fontFamily: mono, color: T.textTertiary, letterSpacing: 2, textTransform: "uppercase", marginBottom: 12, fontWeight: 500 }}>RPE Reference</div>
+        {[{ rpe: "5-6", hr: "60-75%", w: 35 }, { rpe: "7", hr: "75-82%", w: 55 }, { rpe: "8", hr: "82-88%", w: 72 }, { rpe: "9", hr: "88-95%", w: 90 }].map(r => (
+          <div key={r.rpe} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <div style={{ width: 28, fontSize: 12, fontWeight: 600, fontFamily: mono, color: T.blue }}>{r.rpe}</div>
+            <div style={{ flex: 1, height: 6, background: T.surface, borderRadius: 3, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${r.w}%`, background: `linear-gradient(90deg, ${T.blueLight}, ${r.w > 70 ? T.warn : T.blue})`, borderRadius: 3, transition: "width 0.4s" }} />
+            </div>
+            <div style={{ fontSize: 11, color: T.textTertiary, fontFamily: mono, width: 48, textAlign: "right" }}>{r.hr}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── DETAIL VIEW ────────────────────────────────────────────────────────────
+function DetailView({ detail, weights, saveWeight }) {
+  if (!detail) return null;
+  if (typeof detail === "string") return <div style={{ fontSize: 13, color: T.textSecondary, lineHeight: 1.7 }}>{detail}</div>;
+
+  const effortColors = { green: "#059669", yellow: "#d97706", red: "#dc2626" };
+  const effortLabels = { green: "Easy", yellow: "Moderate", red: "Hard" };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {detail.map((item, i) => {
+        if (item.section) return (
+          <div key={i} style={{ fontSize: 9, fontFamily: mono, fontWeight: 500, color: T.blue, letterSpacing: 2, textTransform: "uppercase", marginTop: i > 0 ? 10 : 0, marginBottom: 4 }}>{item.section}</div>
+        );
+        if (item.note && !item.move) return (
+          <div key={i} style={{ fontSize: 12, color: T.textTertiary, lineHeight: 1.5, marginTop: 4, fontStyle: "italic" }}>{item.note.trim()}</div>
+        );
+        if (item.move) {
+          const prev = item.tracked && weights ? weights[item.move] : null;
+          return (
+            <div key={i} style={{ padding: "8px 0", borderBottom: `1px solid ${T.borderLight}` }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{item.move}</div>
+                  {item.note && <div style={{ fontSize: 11, color: T.textTertiary, marginTop: 2 }}>{item.note}</div>}
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ fontSize: 12, fontFamily: mono, fontWeight: 500, color: T.blue }}>{item.info}</div>
+                  {item.rest && <div style={{ fontSize: 10, color: T.textTertiary, marginTop: 1 }}>Rest {item.rest}</div>}
+                </div>
+              </div>
+              {item.tracked && saveWeight && (
+                <WeightTracker move={item.move} prev={prev} onSave={saveWeight} />
+              )}
+            </div>
+          );
+        }
+        return null;
+      })}
+    </div>
+  );
+}
+
+// ─── WEIGHT TRACKER ─────────────────────────────────────────────────────────
+function WeightTracker({ move, prev, onSave }) {
+  const [lb, setLb] = useState(prev ? String(prev.lb) : "");
+  const [effort, setEffort] = useState(prev?.effort || null);
+  const dirty = (lb !== (prev ? String(prev.lb) : "")) || (effort !== (prev?.effort || null));
+
+  const effortOpts = [
+    { id: "green", color: "#059669", bg: "#ecfdf5", border: "#a7f3d0", label: "Easy — add weight" },
+    { id: "yellow", color: "#d97706", bg: "#fffbeb", border: "#fde68a", label: "Moderate — stay here" },
+    { id: "red", color: "#dc2626", bg: "#fef2f2", border: "#fecaca", label: "Hard — hold or drop" },
+  ];
+
+  const handleSave = () => {
+    const val = parseFloat(lb);
+    if (val > 0 && effort) onSave(move, val, effort);
+  };
+
+  return (
+    <div style={{ marginTop: 8, background: T.surface, borderRadius: T.radiusXs, padding: "10px 12px", border: `1px solid ${T.borderLight}` }}>
+      {prev && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: 11, color: T.textTertiary }}>
+          <span>Last: <strong style={{ color: T.text, fontWeight: 600 }}>{prev.lb} lb</strong></span>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: { green: "#059669", yellow: "#d97706", red: "#dc2626" }[prev.effort] || T.border, flexShrink: 0 }} />
+          <span>{({ green: "Easy", yellow: "Moderate", red: "Hard" })[prev.effort]}</span>
+          <span style={{ color: T.textTertiary }}>· {prev.date}</span>
+        </div>
+      )}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ position: "relative", flex: "0 0 80px" }}>
+          <input
+            type="number" inputMode="decimal" placeholder={prev ? String(prev.lb) : "lb"}
+            value={lb} onChange={e => setLb(e.target.value)}
+            style={{ width: "100%", padding: "7px 28px 7px 10px", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 6, color: T.text, fontFamily: mono, fontSize: 13, fontWeight: 500, outline: "none", boxSizing: "border-box" }}
+          />
+          <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: T.textTertiary, fontFamily: mono, pointerEvents: "none" }}>lb</span>
+        </div>
+        <div style={{ display: "flex", gap: 4, flex: 1 }}>
+          {effortOpts.map(e => (
+            <button key={e.id} onClick={() => setEffort(e.id)} title={e.label}
+              style={{ flex: 1, height: 32, borderRadius: 6, border: effort === e.id ? `2px solid ${e.color}` : `1px solid ${T.border}`, background: effort === e.id ? e.bg : T.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, transition: "all 0.15s", padding: 0 }}>
+              <span style={{ width: 10, height: 10, borderRadius: "50%", background: e.color }} />
+              <span style={{ fontSize: 10, fontWeight: 600, color: effort === e.id ? e.color : T.textTertiary }}>{e.id === "green" ? "Easy" : e.id === "yellow" ? "Mod" : "Hard"}</span>
+            </button>
+          ))}
+        </div>
+        {dirty && parseFloat(lb) > 0 && effort && (
+          <button onClick={handleSave} style={{ width: 32, height: 32, borderRadius: 6, border: "none", background: T.blue, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── SESSION CARD ───────────────────────────────────────────────────────────
+function SCard({ session, label, done, onToggle, expanded, onExpand, onSwap, onRevert, swapped, origTitle, weights, saveWeight }) {
+  const bg = swapped ? T.swapPale : done ? T.successPale : T.bg;
+  const bdr = swapped ? T.swapBorder : done ? T.successBorder : T.border;
+  return (
+    <div style={{ background: bg, border: `1px solid ${bdr}`, borderRadius: T.radius, padding: "16px 16px", marginBottom: 10, boxShadow: T.shadow, transition: "all 0.2s", animation: "fadeUp 0.3s ease-out" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <button onClick={e => { e.stopPropagation(); onToggle(); }} style={{ width: 28, height: 28, borderRadius: 8, border: `2px solid ${done ? T.success : T.border}`, background: done ? T.success : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2, transition: "all 0.2s" }}>
+          {done && <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+        </button>
+
+        <div style={{ flex: 1, cursor: "pointer" }} onClick={onExpand}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, fontFamily: mono, fontWeight: 500, color: T.blue, background: T.bluePale, padding: "3px 8px", borderRadius: 5, letterSpacing: 1.5 }}>{label}</span>
+            <span style={{ fontSize: 18 }}>{session.icon}</span>
+            {swapped && <span style={{ fontSize: 9, fontFamily: mono, fontWeight: 500, color: T.swap, background: T.swapPale, border: `1px solid ${T.swapBorder}`, padding: "2px 7px", borderRadius: 5, letterSpacing: 1 }}>SWAPPED</span>}
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: T.text, marginBottom: 2, textDecoration: done ? "line-through" : "none", opacity: done ? 0.5 : 1 }}>{session.title}</div>
+          {swapped && origTitle && <div style={{ fontSize: 11, color: T.textTertiary, marginBottom: 2 }}>Replaces {origTitle}</div>}
+          <div style={{ fontSize: 12, color: T.textTertiary }}>{session.duration} · RPE {session.rpe}</div>
+          {expanded && <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.borderLight}` }}><DetailView detail={session.detail} weights={weights} saveWeight={saveWeight} /></div>}
+          {!expanded && <div style={{ fontSize: 11, color: T.textTertiary, marginTop: 8 }}>Tap for details ›</div>}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+          <button onClick={e => { e.stopPropagation(); onSwap(); }} style={{ width: 34, height: 34, borderRadius: T.radiusXs, border: `1px solid ${T.border}`, background: T.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, boxShadow: T.shadow }}>🔄</button>
+          {onRevert && <button onClick={e => { e.stopPropagation(); onRevert(); }} style={{ width: 34, height: 34, borderRadius: T.radiusXs, border: `1px solid ${T.border}`, background: T.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, boxShadow: T.shadow }}>↩️</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── WEEK VIEW ──────────────────────────────────────────────────────────────
+function WeekView({ wk, ic, toggle, ck, resolve, setSelWeek, wp, onSwap, onRevert, gs, weights, saveWeight }) {
+  const vw = Math.max(1, Math.min(19, wk));
+  const p = gp(vw), c = gc(vw), ci = CYCLE_PATTERN[c], dl = DELOAD_WEEKS.includes(vw), pr = wp[vw], wd = WEEK_DATA[vw - 1];
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const [expandedKey, setExpandedKey] = useState(null);
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <button onClick={() => setSelWeek(Math.max(1, vw - 1))} style={{ width: 40, height: 40, borderRadius: T.radiusXs, border: `1px solid ${T.border}`, background: T.bg, cursor: "pointer", fontFamily: font, fontSize: 16, color: T.textSecondary, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: T.shadow }}>←</button>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: T.text }}>Week {vw}</div>
+          <div style={{ fontSize: 12, color: T.textTertiary }}>{fd(wd.startDate)} – {fd(new Date(wd.startDate.getTime() + 6 * 864e5))}{dl ? " · DELOAD" : ""}</div>
+        </div>
+        <button onClick={() => setSelWeek(Math.min(19, vw + 1))} style={{ width: 40, height: 40, borderRadius: T.radiusXs, border: `1px solid ${T.border}`, background: T.bg, cursor: "pointer", fontFamily: font, fontSize: 16, color: T.textSecondary, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: T.shadow }}>→</button>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <div style={{ flex: 1, borderRadius: T.radiusSm, padding: "10px 12px", background: T.bluePale, border: `1px solid ${T.blueBorder}` }}>
+          <div style={{ fontSize: 9, fontFamily: mono, letterSpacing: 1.5, textTransform: "uppercase", color: T.textTertiary, fontWeight: 500 }}>Phase</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: T.blue }}>{p.name}</div>
+        </div>
+        <div style={{ flex: 1, borderRadius: T.radiusSm, padding: "10px 12px", background: T.bg, border: `1px solid ${T.border}` }}>
+          <div style={{ fontSize: 9, fontFamily: mono, letterSpacing: 1.5, textTransform: "uppercase", color: T.textTertiary, fontWeight: 500 }}>Cycle {c}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{ci.intensity}</div>
+        </div>
+        <div style={{ flex: 1, borderRadius: T.radiusSm, padding: "10px 12px", background: pr.pct === 100 ? T.successPale : T.bg, border: `1px solid ${pr.pct === 100 ? T.successBorder : T.border}` }}>
+          <div style={{ fontSize: 9, fontFamily: mono, letterSpacing: 1.5, textTransform: "uppercase", color: T.textTertiary, fontWeight: 500 }}>Done</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: pr.pct === 100 ? T.success : T.blue }}>{pr.pct}%</div>
+        </div>
+      </div>
+
+      <div style={{ height: 6, background: T.surface, borderRadius: 3, marginBottom: 20, overflow: "hidden", border: `1px solid ${T.borderLight}` }}>
+        <div style={{ height: "100%", width: `${pr.pct}%`, background: `linear-gradient(90deg, ${T.blueLight}, ${T.blue})`, borderRadius: 3, transition: "width 0.4s" }} />
+      </div>
+
+      {[0,1,2,3,4,5,6].map(d => {
+        const wo = getWorkout(vw, d); if (!wo) return null;
+        return (
+          <div key={d} style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 10, fontFamily: mono, color: T.textTertiary, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 6, paddingLeft: 2, fontWeight: 500 }}>{days[d]}</div>
+            {["am", "pm"].map(slot => {
+              if (!wo[slot]) return null;
+              const res = resolve(wo[slot], vw, d, slot);
+              const sw = !!gs(vw, d, slot);
+              return <MiniS key={slot} title={`${res.icon} ${res.title}`} sub={res.duration} detail={res.detail} done={ic(vw, d, slot)} onToggle={() => toggle(ck(vw, d, slot))} swapped={sw} onSwap={() => onSwap(vw, d, slot, wo[slot])} onRevert={sw ? () => onRevert(vw, d, slot) : null} expanded={expandedKey === `${d}-${slot}`} onExpand={() => setExpandedKey(expandedKey === `${d}-${slot}` ? null : `${d}-${slot}`)} origTitle={sw ? wo[slot].title : null} weights={weights} saveWeight={saveWeight} />;
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MiniS({ title, sub, detail, done, onToggle, swapped, onSwap, onRevert, expanded, onExpand, origTitle, weights, saveWeight }) {
+  return (
+    <div style={{ background: swapped ? T.swapPale : done ? T.successPale : T.bg, border: `1px solid ${swapped ? T.swapBorder : done ? T.successBorder : T.border}`, borderRadius: T.radiusSm, marginBottom: 4, boxShadow: T.shadow, overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
+        <div onClick={onToggle} style={{ width: 22, height: 22, borderRadius: 6, cursor: "pointer", border: `2px solid ${done ? T.success : T.border}`, background: done ? T.success : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {done && <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+        </div>
+        <div style={{ flex: 1, cursor: "pointer" }} onClick={onExpand}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: T.text, opacity: done ? 0.5 : 1, textDecoration: done ? "line-through" : "none", display: "flex", alignItems: "center", gap: 6 }}>
+            {title}
+            {swapped && <span style={{ fontSize: 8, fontFamily: mono, fontWeight: 500, color: T.swap, background: T.swapPale, border: `1px solid ${T.swapBorder}`, padding: "1px 5px", borderRadius: 4 }}>SWAP</span>}
+          </div>
+          {swapped && origTitle && <div style={{ fontSize: 10, color: T.textTertiary, marginTop: 2 }}>Replaces {origTitle}</div>}
+        </div>
+        <div style={{ fontSize: 11, color: T.textTertiary, fontFamily: mono, flexShrink: 0, fontWeight: 500 }}>{sub}</div>
+        <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+          <button onClick={onSwap} style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${T.border}`, background: T.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, padding: 0 }}>🔄</button>
+          {onRevert && <button onClick={onRevert} style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${T.border}`, background: T.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, padding: 0 }}>↩️</button>}
+        </div>
+      </div>
+      {expanded && detail && (
+        <div style={{ padding: "0 12px 12px 42px", borderTop: `1px solid ${T.borderLight}`, paddingTop: 10, marginTop: 2 }}>
+          <DetailView detail={detail} weights={weights} saveWeight={saveWeight} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── CALENDAR VIEW ──────────────────────────────────────────────────────────
+function CalView({ cw, wp, onSel }) {
+  return (
+    <div>
+      <div style={{ fontSize: 14, color: T.textTertiary, marginBottom: 20 }}>Feb 16 → Jul 2, 2026 · Cotopaxi & Chimborazo</div>
+      {PHASES.map(ph => (
+        <div key={ph.name} style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 10, fontFamily: mono, letterSpacing: 2.5, textTransform: "uppercase", color: ph.name === "Taper" ? T.warn : T.blue, marginBottom: 10, paddingLeft: 2, fontWeight: 500 }}>{ph.name} Phase · {ph.ruck}</div>
+          {ph.weeks.map(w => {
+            const wd = WEEK_DATA[w - 1], pr = wp[w], cur = w === cw, dl = DELOAD_WEEKS.includes(w);
+            return (
+              <div key={w} onClick={() => onSel(w)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", marginBottom: 4, borderRadius: T.radiusSm, cursor: "pointer", background: cur ? T.bluePale : T.bg, border: `1px solid ${cur ? T.blueBorder : T.border}`, boxShadow: T.shadow, transition: "all 0.15s" }}>
+                <div style={{ width: 38, height: 38, borderRadius: T.radiusXs, background: cur ? T.blue : T.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: cur ? T.textInverse : T.blue, border: cur ? "none" : `1px solid ${T.borderLight}` }}>{w}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text, display: "flex", alignItems: "center", gap: 6 }}>
+                    {fd(wd.startDate)} – {fd(new Date(wd.startDate.getTime() + 6 * 864e5))}
+                    {dl && <span style={{ fontSize: 9, fontFamily: mono, fontWeight: 500, background: T.warnPale, color: T.warn, padding: "2px 7px", borderRadius: 5, border: `1px solid ${T.warnBorder}` }}>DELOAD</span>}
+                    {cur && <span style={{ fontSize: 9, fontFamily: mono, fontWeight: 500, background: T.blue, color: T.textInverse, padding: "2px 7px", borderRadius: 5 }}>NOW</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: T.textTertiary, marginTop: 2 }}>Cycle {wd.cycle} · {CYCLE_PATTERN[wd.cycle].intensity}</div>
+                </div>
+                <div style={{ position: "relative", width: 38, height: 38 }}>
+                  <svg width="38" height="38" viewBox="0 0 38 38">
+                    <circle cx="19" cy="19" r="16" fill="none" stroke={T.borderLight} strokeWidth="3" />
+                    <circle cx="19" cy="19" r="16" fill="none" stroke={pr.pct > 0 ? (pr.pct === 100 ? T.success : T.blue) : "transparent"} strokeWidth="3" strokeDasharray={`${pr.pct * 1.005} 100.5`} strokeLinecap="round" transform="rotate(-90 19 19)" style={{ transition: "all 0.3s" }} />
+                  </svg>
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 600, fontFamily: mono, color: pr.pct === 100 ? T.success : T.textTertiary }}>{pr.pct}%</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
+ReactDOM.render(<App/>, document.getElementById("root"));
+</script>
+</body>
+</html>
