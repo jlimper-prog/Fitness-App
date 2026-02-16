@@ -28,12 +28,12 @@ input,textarea{font-family:'Outfit',sans-serif}
 const {useState,useEffect,useCallback,useMemo} = React;
 
 // ─── DATA ───────────────────────────────────────────────────────────────────
-const PROGRAM_START = new Date(2026, 1, 16); // Mon Feb 16, 2026
+const PROGRAM_START = new Date(2026, 1, 23); // Mon Feb 23, 2026
 const PHASES = [
-  { name: "Base", weeks: [1,2,3,4,5], color: "#3b82f6", ruck: "2mi / 30lb", run: "30-40min", sunday: "60-75min, 30lb" },
-  { name: "Build", weeks: [6,7,8,9,10,11,12], color: "#2563eb", ruck: "3mi / 35lb", run: "45-60min", sunday: "90-120min, 35lb" },
-  { name: "Peak", weeks: [13,14,15,16,17], color: "#1d4ed8", ruck: "4-5mi / 40lb", run: "60-90min", sunday: "2.5-3.5hrs, 40lb" },
-  { name: "Taper", weeks: [18,19], color: "#f59e0b", ruck: "2mi / 25lb", run: "30-40min", sunday: "60min light/unweighted" },
+  { name: "Base", weeks: [1,2,3,4], color: "#3b82f6", ruck: "2mi / 30lb", run: "30-40min", sunday: "60-75min, 30lb" },
+  { name: "Build", weeks: [5,6,7,8,9,10,11], color: "#2563eb", ruck: "3mi / 35lb", run: "45-60min", sunday: "90-120min, 35lb" },
+  { name: "Peak", weeks: [12,13,14,15,16], color: "#1d4ed8", ruck: "4-5mi / 40lb", run: "60-90min", sunday: "2.5-3.5hrs, 40lb" },
+  { name: "Taper", weeks: [17], color: "#f59e0b", ruck: "2mi / 25lb", run: "30-40min", sunday: "60min light/unweighted" },
 ];
 const DELOAD_WEEKS = [4, 8, 12, 16];
 const CYCLE_PATTERN = {
@@ -97,7 +97,7 @@ function getSubsFor(session) {
 }
 
 const WEEK_DATA = [];
-for (let w = 1; w <= 19; w++) {
+for (let w = 1; w <= 17; w++) {
   const startDate = new Date(PROGRAM_START);
   startDate.setDate(startDate.getDate() + (w - 1) * 7);
   WEEK_DATA.push({ week: w, cycle: ((w - 1) % 4) + 1, phase: PHASES.find(p => p.weeks.includes(w)), isDeload: DELOAD_WEEKS.includes(w), startDate });
@@ -110,7 +110,7 @@ const fd = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric"
 const fdf = (d) => d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
 function getWorkout(wk, dow) {
-  if (wk < 1 || wk > 19) return null;
+  if (wk < 1 || wk > 17) return null;
   const p = gp(wk), c = gc(wk), ci = CYCLE_PATTERN[c], dl = DELOAD_WEEKS.includes(wk);
   const dlNote = dl ? "\n⚡ DELOAD: Reduce all sets/volume by ~30%." : "";
 
@@ -130,7 +130,7 @@ function getWorkout(wk, dow) {
           { move: "Weighted ruck", info: p.sunday },
           { move: "Pace", info: "Conversational (RPE 5-6)" },
           { move: "Terrain", info: "Varied — hills preferred" },
-          { note: `Summit-day simulation. Practice pack fit and gear.${wk >= 9 && wk <= 12 ? " Optional: 1 unweighted Sunday/month." : ""}${wk >= 13 && wk <= 17 ? " NON-NEGOTIABLE: Always 40lb." : ""}${dlNote}` },
+          { note: `Summit-day simulation. Practice pack fit and gear.${wk >= 8 && wk <= 11 ? " Optional: 1 unweighted Sunday/month." : ""}${wk >= 12 && wk <= 16 ? " NON-NEGOTIABLE: Always 40lb." : ""}${dlNote}` },
         ]},
       deload: dl },
 
@@ -266,9 +266,9 @@ function getWorkout(wk, dow) {
             { move: "Work intervals", info: "2-4 min efforts at RPE 7-8" },
             { note: `Mix of burpees, thrusters, box jumps, and running. High intensity, short rest.${dl ? " DELOAD: Reduce volume 30%." : ""}` },
           ]} :
-        { title: "Long Ruck", duration: c === 2 ? (wk <= 5 ? "75-90min, 30lb" : wk <= 12 ? "2hrs, 35lb" : wk <= 17 ? "2.5-3hrs, 40lb" : "60min light") : (wk <= 5 ? "75-90min, 30lb" : wk <= 12 ? "2hrs, 35lb" : wk <= 17 ? "2.5-3hrs, 40lb" : "60min light"), rpe: "6-7", icon: "🎒",
+        { title: "Long Ruck", duration: c === 2 ? (wk <= 4 ? "75-90min, 30lb" : wk <= 11 ? "2hrs, 35lb" : wk <= 16 ? "2.5-3hrs, 40lb" : "60min light") : (wk <= 4 ? "75-90min, 30lb" : wk <= 11 ? "2hrs, 35lb" : wk <= 16 ? "2.5-3hrs, 40lb" : "60min light"), rpe: "6-7", icon: "🎒",
           detail: [
-            { move: "Long ruck", info: c === 2 ? (wk <= 5 ? "75-90 min at 30lb" : wk <= 12 ? "2 hrs at 35lb" : wk <= 17 ? "2.5-3.5 hrs at 40lb" : "60 min light") : (wk <= 5 ? "75-90 min at 30lb" : wk <= 12 ? "2 hrs at 35lb" : wk <= 17 ? "2.5-3.5 hrs at 40lb" : "60 min light") },
+            { move: "Long ruck", info: c === 2 ? (wk <= 4 ? "75-90 min at 30lb" : wk <= 11 ? "2 hrs at 35lb" : wk <= 16 ? "2.5-3.5 hrs at 40lb" : "60 min light") : (wk <= 4 ? "75-90 min at 30lb" : wk <= 11 ? "2 hrs at 35lb" : wk <= 16 ? "2.5-3.5 hrs at 40lb" : "60 min light") },
             { move: "Pace", info: "Conversational (RPE 6-7)" },
             { note: `Endurance focus. Varied terrain preferred.${dl ? " DELOAD: Reduce duration 30%." : ""}` },
           ]},
@@ -354,11 +354,11 @@ function App() {
     return { ...orig, swapped: false };
   }, [swaps]);
 
-  const stats = useMemo(() => ({ total: Object.keys(comp).length, week: Object.keys(comp).filter(k => k.startsWith(`w${cw}-`)).length, phase: cw >= 1 && cw <= 19 ? gp(cw) : null, left: Math.max(0, 19 - cw) }), [comp, cw]);
+  const stats = useMemo(() => ({ total: Object.keys(comp).length, week: Object.keys(comp).filter(k => k.startsWith(`w${cw}-`)).length, phase: cw >= 1 && cw <= 17 ? gp(cw) : null, left: Math.max(0, 17 - cw) }), [comp, cw]);
 
   const wp = useMemo(() => {
     const r = {};
-    for (let w = 1; w <= 19; w++) { let t = 0, d = 0; for (let i = 0; i <= 6; i++) { const wo = getWorkout(w, i); if (wo) { if (wo.am) { t++; if (ic(w, i, "am")) d++; } if (wo.pm) { t++; if (ic(w, i, "pm")) d++; } } } r[w] = { t, d, pct: t > 0 ? Math.round(d / t * 100) : 0 }; }
+    for (let w = 1; w <= 17; w++) { let t = 0, d = 0; for (let i = 0; i <= 6; i++) { const wo = getWorkout(w, i); if (wo) { if (wo.am) { t++; if (ic(w, i, "am")) d++; } if (wo.pm) { t++; if (ic(w, i, "pm")) d++; } } } r[w] = { t, d, pct: t > 0 ? Math.round(d / t * 100) : 0 }; }
     return r;
   }, [comp]);
 
@@ -385,7 +385,7 @@ function App() {
           <div>
             <div style={{ fontSize: 11, fontFamily: mono, color: T.textTertiary, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 6, fontWeight: 500 }}>Ecuador Expedition</div>
             <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.5, color: T.text }}>
-              {cw >= 1 && cw <= 19 ? <>Week {cw} <span style={{ color: T.blue, fontWeight: 600 }}>· {stats.phase?.name}</span></> : cw < 1 ? "Starting Soon" : "Complete 🎉"}
+              {cw >= 1 && cw <= 17 ? <>Week {cw} <span style={{ color: T.blue, fontWeight: 600 }}>· {stats.phase?.name}</span></> : cw < 1 ? "Starting Soon" : "Complete 🎉"}
             </div>
           </div>
           <div style={{ background: T.bluePale, borderRadius: 12, padding: "8px 12px", textAlign: "center" }}>
@@ -411,7 +411,7 @@ function App() {
 
       {/* ── Nav ── */}
       <div style={{ display: "flex", padding: "12px 20px", gap: 6, background: T.bg, borderBottom: `1px solid ${T.border}` }}>
-        {[{ id: "today", l: "Today" }, { id: "week", l: "This Week" }, { id: "calendar", l: "19 Weeks" }].map(t => (
+        {[{ id: "today", l: "Today" }, { id: "week", l: "This Week" }, { id: "calendar", l: "17 Weeks" }].map(t => (
           <button key={t.id} onClick={() => { setView(t.id); if (t.id === "week") setSelWeek(null); }}
             style={{ flex: 1, padding: "10px 6px", border: view === t.id ? "none" : `1px solid ${T.border}`, borderRadius: T.radiusXs, cursor: "pointer", fontFamily: font, fontSize: 13, fontWeight: 600, background: view === t.id ? T.blue : T.bg, color: view === t.id ? T.textInverse : T.textSecondary, transition: "all 0.2s", boxShadow: view === t.id ? "0 2px 8px rgba(37,99,235,0.25)" : "none" }}>
             {t.l}
@@ -490,11 +490,11 @@ function SwapModal({ orig, wk, d, s, onApply, onCustom, onClose }) {
 
 // ─── TODAY VIEW ─────────────────────────────────────────────────────────────
 function TodayView({ cw, cd, today, ic, toggle, ck, resolve, expanded, setExpanded, onSwap, onRevert, gs, weights, saveWeight }) {
-  const wo = cw >= 1 && cw <= 19 ? getWorkout(cw, cd) : null;
+  const wo = cw >= 1 && cw <= 17 ? getWorkout(cw, cd) : null;
   if (!wo) return (
     <div style={{ textAlign: "center", padding: "60px 20px" }}>
       <div style={{ fontSize: 56, marginBottom: 16 }}>🏔️</div>
-      <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>{cw < 1 ? "Training starts Feb 16!" : "Program complete!"}</div>
+      <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>{cw < 1 ? "Training starts Feb 23!" : "Program complete!"}</div>
       <div style={{ fontSize: 14, color: T.textSecondary }}>{cw < 1 ? "Rest up and prepare your gear." : "Ready for Cotopaxi & Chimborazo."}</div>
     </div>
   );
@@ -648,17 +648,19 @@ function SCard({ session, label, done, onToggle, expanded, onExpand, onSwap, onR
           {done && <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
         </button>
 
-        <div style={{ flex: 1, cursor: "pointer" }} onClick={onExpand}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 10, fontFamily: mono, fontWeight: 500, color: T.blue, background: T.bluePale, padding: "3px 8px", borderRadius: 5, letterSpacing: 1.5 }}>{label}</span>
-            <span style={{ fontSize: 18 }}>{session.icon}</span>
-            {swapped && <span style={{ fontSize: 9, fontFamily: mono, fontWeight: 500, color: T.swap, background: T.swapPale, border: `1px solid ${T.swapBorder}`, padding: "2px 7px", borderRadius: 5, letterSpacing: 1 }}>SWAPPED</span>}
+        <div style={{ flex: 1 }}>
+          <div style={{ cursor: "pointer" }} onClick={onExpand}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 10, fontFamily: mono, fontWeight: 500, color: T.blue, background: T.bluePale, padding: "3px 8px", borderRadius: 5, letterSpacing: 1.5 }}>{label}</span>
+              <span style={{ fontSize: 18 }}>{session.icon}</span>
+              {swapped && <span style={{ fontSize: 9, fontFamily: mono, fontWeight: 500, color: T.swap, background: T.swapPale, border: `1px solid ${T.swapBorder}`, padding: "2px 7px", borderRadius: 5, letterSpacing: 1 }}>SWAPPED</span>}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: T.text, marginBottom: 2, textDecoration: done ? "line-through" : "none", opacity: done ? 0.5 : 1 }}>{session.title}</div>
+            {swapped && origTitle && <div style={{ fontSize: 11, color: T.textTertiary, marginBottom: 2 }}>Replaces {origTitle}</div>}
+            <div style={{ fontSize: 12, color: T.textTertiary }}>{session.duration} · RPE {session.rpe}</div>
+            {!expanded && <div style={{ fontSize: 11, color: T.textTertiary, marginTop: 8 }}>Tap for details ›</div>}
           </div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: T.text, marginBottom: 2, textDecoration: done ? "line-through" : "none", opacity: done ? 0.5 : 1 }}>{session.title}</div>
-          {swapped && origTitle && <div style={{ fontSize: 11, color: T.textTertiary, marginBottom: 2 }}>Replaces {origTitle}</div>}
-          <div style={{ fontSize: 12, color: T.textTertiary }}>{session.duration} · RPE {session.rpe}</div>
           {expanded && <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.borderLight}` }}><DetailView detail={session.detail} weights={weights} saveWeight={saveWeight} /></div>}
-          {!expanded && <div style={{ fontSize: 11, color: T.textTertiary, marginTop: 8 }}>Tap for details ›</div>}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
@@ -672,7 +674,7 @@ function SCard({ session, label, done, onToggle, expanded, onExpand, onSwap, onR
 
 // ─── WEEK VIEW ──────────────────────────────────────────────────────────────
 function WeekView({ wk, ic, toggle, ck, resolve, setSelWeek, wp, onSwap, onRevert, gs, weights, saveWeight }) {
-  const vw = Math.max(1, Math.min(19, wk));
+  const vw = Math.max(1, Math.min(17, wk));
   const p = gp(vw), c = gc(vw), ci = CYCLE_PATTERN[c], dl = DELOAD_WEEKS.includes(vw), pr = wp[vw], wd = WEEK_DATA[vw - 1];
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const [expandedKey, setExpandedKey] = useState(null);
@@ -685,7 +687,7 @@ function WeekView({ wk, ic, toggle, ck, resolve, setSelWeek, wp, onSwap, onRever
           <div style={{ fontSize: 20, fontWeight: 700, color: T.text }}>Week {vw}</div>
           <div style={{ fontSize: 12, color: T.textTertiary }}>{fd(wd.startDate)} – {fd(new Date(wd.startDate.getTime() + 6 * 864e5))}{dl ? " · DELOAD" : ""}</div>
         </div>
-        <button onClick={() => setSelWeek(Math.min(19, vw + 1))} style={{ width: 40, height: 40, borderRadius: T.radiusXs, border: `1px solid ${T.border}`, background: T.bg, cursor: "pointer", fontFamily: font, fontSize: 16, color: T.textSecondary, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: T.shadow }}>→</button>
+        <button onClick={() => setSelWeek(Math.min(17, vw + 1))} style={{ width: 40, height: 40, borderRadius: T.radiusXs, border: `1px solid ${T.border}`, background: T.bg, cursor: "pointer", fontFamily: font, fontSize: 16, color: T.textSecondary, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: T.shadow }}>→</button>
       </div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -758,7 +760,7 @@ function MiniS({ title, sub, detail, done, onToggle, swapped, onSwap, onRevert, 
 function CalView({ cw, wp, onSel }) {
   return (
     <div>
-      <div style={{ fontSize: 14, color: T.textTertiary, marginBottom: 20 }}>Feb 16 → Jul 2, 2026 · Cotopaxi & Chimborazo</div>
+      <div style={{ fontSize: 14, color: T.textTertiary, marginBottom: 20 }}>Feb 23 → Jun 28, 2026 · Cotopaxi & Chimborazo</div>
       {PHASES.map(ph => (
         <div key={ph.name} style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 10, fontFamily: mono, letterSpacing: 2.5, textTransform: "uppercase", color: ph.name === "Taper" ? T.warn : T.blue, marginBottom: 10, paddingLeft: 2, fontWeight: 500 }}>{ph.name} Phase · {ph.ruck}</div>
