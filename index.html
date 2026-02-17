@@ -12,13 +12,13 @@
 <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAADRklEQVR42u3d200DMRBAUTdDZZRPEVADymt851zJ/5vxkcMmQXt+pVDHCAS0BLQEtAS0gJaAloCWgJaAFtAS0BLQEtCD+/r+eXgJ6OvQwg70SsCAA51HDDfQWcRwA51FDPdi0Bsgb4Z9IIYbaJDBBhpmqIEGGeydoMEEOwMaRqgToAEEOwMaOqgToEEDOwMaLqgzoKGCOgMaJqgToAECOwMaGqgzoGGBOgMaEqgzoOGAOgMaCqgzoGGAGmgL6ImgIYA6A9rmQ50BbdOhzoC22VAD7cc3V848D9qJsu9PvCxob5F7b8CBBhroyaDdxPi8PwPaXTnQ75ov0EADXf7MGei7Zww00ECXvxEE+u45H5iBLs0aaKCBrmIG+v55Aw000GXQN26mGbwQNKhAfxI10EADDTPQU2cBNNBAAw10HjSgQE+YB9BAAw000GnQcAI9ZSZAAw000EBnQYMJ9KS5AA000EADDbQF9HTQUAI9bTZAAw000EADbQENNNBAAw000AYJ9HLQQAI9cT5AAw000EADbQENNNBAAw000IYINNAW0EBbQANtw4AGGmigDRFooC2ggbaABtqGAQ000EADDfQ60NMG+cxcr3/Bcto5oYEGGmiggQYaaKCBBto1Aw000BeDnjRMoGEGGmig66B9sQI00EB3QEP92eusgX40oIEGegPoV72uVwT0k0FPGep0LDC/fj6nNtipaGAGegycR1/fxGsCGup/v8Yp17Hpv3eAvjSgF4Guo/ZjpDeBdkoD/em9OuVhwwy0Uxroq/fo1IcOM9C5wcMMNNQwX7knQAMNNNQwT92Ls3FDQO7O/2zdGJiBhhrm8TM/2zcJZqBtljX28DhOIKv0Tgi0BTTU1tT7lLeDhhpmoC2gJ4OGGuYcaKhhzoGGGuYcaKhhBtoCejJoqGHOgYYa5hxoqGHOgYYa5hxoqGHOgYYa5hxosEFOgoYa5hxoqGHOgYYa5hxosEFOgoYa5hxosEFOgoYa5hxosD3lIAka7N3PoMmChnrnY+/SoMHe9fzGNaC3497UOtCbYG9sLegq7u0BHcAtoK/HLaCvBi6gr8MuoCWgBbQEtAS0BLQEtICWgJaAloAW0EYgoKWh/QGgd9ULseODNQAAAABJRU5ErkJggg==">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-*{{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
-body{{font-family:'Outfit',sans-serif;background:#f8fafc;color:#0f172a;-webkit-font-smoothing:antialiased;overscroll-behavior:none}}
-@keyframes fadeUp{{from{{opacity:0;transform:translateY(8px)}}to{{opacity:1;transform:translateY(0)}}}}
-@keyframes slideUp{{from{{transform:translateY(100%)}}to{{transform:translateY(0)}}}}
-@keyframes spin{{to{{transform:rotate(360deg)}}}}
-button{{font-family:'Outfit',sans-serif}}
-input,textarea{{font-family:'Outfit',sans-serif}}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Outfit',sans-serif;background:#f8fafc;color:#0f172a;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+button{font-family:'Outfit',sans-serif}
+input,textarea{font-family:'Outfit',sans-serif}
 </style>
 </head>
 <body>
@@ -27,7 +27,7 @@ input,textarea{{font-family:'Outfit',sans-serif}}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 <script type="text/babel">
-const {{useState,useEffect,useCallback,useMemo}} = React;
+const {useState,useEffect,useCallback,useMemo} = React;
 
 // ─── DATA ───────────────────────────────────────────────────────────────────
 const PROGRAM_START = new Date(2026, 1, 23); // Mon Feb 23, 2026
